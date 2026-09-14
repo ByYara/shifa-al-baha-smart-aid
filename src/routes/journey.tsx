@@ -263,25 +263,36 @@ function JourneyPage() {
   const { tx } = useLang();
   const [step, setStep] = React.useState(0);
 
-  // Step 1
+  // Stage 1 — request type
+  const [requestType, setRequestType] = React.useState<string | null>(null);
+  // Stage 2 — smart assistant
   const [answers, setAnswers] = React.useState<string[]>([]);
-  // Step 2
+  // Stage 3 — patient location
+  const [location, setLocation] = React.useState<string | null>(null);
+  // Stage 4
   const [uploaded, setUploaded] = React.useState(false);
-  // Step 4
+  // Stage 6
   const [sentTo, setSentTo] = React.useState<string | null>(null);
-  // Step 6
+  // Stage 8
   const [transport, setTransport] = React.useState<string | null>(null);
   const [opsApproved, setOpsApproved] = React.useState(false);
-  // Step 9
+  // Stage 11
   const [survey, setSurvey] = React.useState<Record<string, number>>({});
   const [submitted, setSubmitted] = React.useState(false);
 
+  const caseIndex = triage.findIndex((t) => t.id === "case");
+  const dangerIndex = triage.findIndex((t) => t.id === "danger");
+  const caseType = answers[caseIndex] as CaseType | undefined;
+  const danger = dangerSigns.includes(answers[dangerIndex] as (typeof dangerSigns)[number]);
+
   const canNext = () => {
-    if (step === 0) return answers.length >= triage.length;
-    if (step === 1) return uploaded;
-    if (step === 3) return !!sentTo;
-    if (step === 5) return !!transport && opsApproved;
-    if (step === 8) return submitted;
+    if (step === 0) return !!requestType;
+    if (step === 1) return answers.filter(Boolean).length >= triage.length;
+    if (step === 2) return !!location;
+    if (step === 3) return uploaded;
+    if (step === 5) return !!sentTo;
+    if (step === 7) return !!transport && opsApproved;
+    if (step === 10) return submitted;
     return true;
   };
 
@@ -309,47 +320,113 @@ function JourneyPage() {
 
           {step === 0 && (
             <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {tx(
+                  p(
+                    "تم التحقق من هويتك عبر نفاذ. اختر نوع الطلب للمتابعة.",
+                    "Your identity was verified through Nafath. Select the request type to continue.",
+                  ),
+                )}
+              </p>
+              {requestTypes.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setRequestType(r.id)}
+                  className={`block w-full rounded-md border p-3 text-start transition-colors ${
+                    requestType === r.id ? "border-primary bg-secondary" : "border-border hover:bg-secondary"
+                  }`}
+                >
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <ClipboardList className="h-4 w-4 text-primary" />
+                    {tx(r.name)}
+                    {requestType === r.id && <Tag tone="success">{tx(p("محدد", "Selected"))}</Tag>}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{tx(r.note)}</p>
+                </button>
+              ))}
+              <Disclaimer
+                text={p(
+                  "جميع أنواع الطلبات في هذا النموذج للعرض فقط ببيانات محاكاة.",
+                  "All request types in this prototype are for demonstration with simulated data.",
+                )}
+              />
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="space-y-3">
               {triage.map((t, i) => {
                 const answered = answers[i];
-                const unlocked = i <= answers.length;
+                const unlocked = i <= answers.filter(Boolean).length;
                 if (!unlocked) return null;
                 return (
-                  <div key={t.q.en} className="rounded-md border border-border p-3">
+                  <div key={t.id} className="rounded-md border border-border p-3">
                     <p className="text-sm font-medium">
                       {i + 1}. {tx(t.q)}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {t.options.map((o) => (
                         <button
-                          key={o.en}
+                          key={o.key}
                           onClick={() =>
                             setAnswers((a) => {
                               const next = [...a];
-                              next[i] = o.en;
+                              next[i] = o.key;
                               return next;
                             })
                           }
                           className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                            answered === o.en
+                            answered === o.key
                               ? "border-primary bg-primary text-primary-foreground"
                               : "border-border hover:bg-secondary"
                           }`}
                         >
-                          {tx(o)}
+                          {tx(o.label)}
                         </button>
                       ))}
                     </div>
                   </div>
                 );
               })}
+
+              {caseType && answers[dangerIndex] && <FirstAidPanel caseType={caseType} danger={danger} />}
+
               <Disclaimer
                 text={p(
-                  "المساعد الذكي يجمع المعلومات فقط ولا يقدم تشخيصًا طبيًا.",
-                  "The smart assistant only collects information and does not provide a medical diagnosis.",
+                  "المساعد الذكي يجمع المعلومات ويعرض إسعافات أولية عامة فقط، ولا يقدم تشخيصًا أو قرارًا علاجيًا.",
+                  "The smart assistant only collects information and shows general first-aid steps; it provides no diagnosis or treatment decision.",
                 )}
               />
             </div>
           )}
+
+          {step === 2 && (
+            <div className="space-y-3">
+              {patientLocations.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => setLocation(l.id)}
+                  className={`block w-full rounded-md border p-3 text-start transition-colors ${
+                    location === l.id ? "border-primary bg-secondary" : "border-border hover:bg-secondary"
+                  }`}
+                >
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    {tx(l.name)}
+                    {location === l.id && <Tag tone="success">{tx(p("محدد", "Selected"))}</Tag>}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{tx(l.note)}</p>
+                </button>
+              ))}
+              <Disclaimer
+                text={p(
+                  "تحديد الموقع محاكاة توضيحية ولا يستخدم موقعك الفعلي.",
+                  "Location selection is an illustrative simulation and does not use your real location.",
+                )}
+              />
+            </div>
+          )}
+
 
           {step === 1 && (
             <div className="space-y-3">
