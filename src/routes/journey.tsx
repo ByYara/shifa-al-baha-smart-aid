@@ -97,7 +97,7 @@ function StepRail({ step }: { step: number }) {
         <span className="font-semibold text-primary">
           {tx(p("المرحلة", "Stage"))} {step + 1} / {stages.length}
         </span>
-        <span className="text-muted-foreground">{tx(stages[step].title)}</span>
+        <span className="text-muted-foreground">{tx(stages[step]!.title)}</span>
       </div>
       <div className="mt-2 flex gap-1">
         {stages.map((s, i) => (
@@ -137,7 +137,7 @@ function JourneyPage() {
     return true;
   };
 
-  const Icon = stages[step].icon;
+  const Icon = stages[step]!.icon;
 
   return (
     <Page>
@@ -146,7 +146,7 @@ function JourneyPage() {
         <StepRail step={step} />
 
         <Card
-          title={`${tx(p("المرحلة", "Stage"))} ${step + 1} — ${tx(stages[step].title)}`}
+          title={`${tx(p("المرحلة", "Stage"))} ${step + 1} — ${tx(stages[step]!.title)}`}
           subtitle={tx(
             p(
               "خدمة شفاء الباحة الذكية، مُدمجة داخل بوابة إمارة منطقة الباحة",
@@ -232,12 +232,12 @@ function JourneyPage() {
                     </p>
                     <dl className="space-y-1.5 text-xs">
                       {[
-                        [p("التشخيص", "Diagnosis"), p("نزيف دماغي حاد", "Acute intracranial hemorrhage")],
-                        [p("درجة الخطورة", "Severity"), p("عالية", "High")],
-                        [p("التخصص المطلوب", "Specialty"), p("جراحة أعصاب", "Neurosurgery")],
-                        [p("نوع السرير", "Bed type"), p("عناية مركزة", "Intensive care")],
-                        [p("نسبة اكتمال البيانات", "Completeness score"), p("٩٢٪", "92%")],
-                      ].map(([k, v]) => (
+                        { k: p("التشخيص", "Diagnosis"), v: p("نزيف دماغي حاد", "Acute intracranial hemorrhage") },
+                        { k: p("درجة الخطورة", "Severity"), v: p("عالية", "High") },
+                        { k: p("التخصص المطلوب", "Specialty"), v: p("جراحة أعصاب", "Neurosurgery") },
+                        { k: p("نوع السرير", "Bed type"), v: p("عناية مركزة", "Intensive care") },
+                        { k: p("نسبة اكتمال البيانات", "Completeness score"), v: p("٩٢٪", "92%") },
+                      ].map(({ k, v }) => (
                         <div key={k.en} className="flex justify-between gap-3">
                           <dt className="text-muted-foreground">{tx(k)}</dt>
                           <dd className="font-medium">{tx(v)}</dd>
@@ -352,11 +352,11 @@ function JourneyPage() {
               </div>
               <dl className="grid gap-3 sm:grid-cols-2">
                 {[
-                  [p("رقم السرير", "Bed number"), p("ICU-04", "ICU-04")],
-                  [p("القسم", "Department"), p("العناية المركزة — جراحة أعصاب", "Intensive Care — Neurosurgery")],
-                  [p("الطبيب المستقبل", "Attending physician"), p("د. سعد الغامدي — استشاري", "Dr. Saad Al-Ghamdi — Consultant")],
-                  [p("وقت القبول", "Acceptance timestamp"), p("١٤:٣٢ — اليوم", "14:32 — Today")],
-                ].map(([k, v]) => (
+                  { k: p("رقم السرير", "Bed number"), v: p("ICU-04", "ICU-04") },
+                  { k: p("القسم", "Department"), v: p("العناية المركزة — جراحة أعصاب", "Intensive Care — Neurosurgery") },
+                  { k: p("الطبيب المستقبل", "Attending physician"), v: p("د. سعد الغامدي — استشاري", "Dr. Saad Al-Ghamdi — Consultant") },
+                  { k: p("وقت القبول", "Acceptance timestamp"), v: p("١٤:٣٢ — اليوم", "14:32 — Today") },
+                ].map(({ k, v }) => (
                   <div key={k.en} className="rounded-md border border-border p-3">
                     <dt className="text-xs text-muted-foreground">{tx(k)}</dt>
                     <dd className="mt-0.5 text-sm font-semibold">{tx(v)}</dd>
