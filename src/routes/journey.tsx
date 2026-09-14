@@ -47,9 +47,11 @@ export const Route = createFileRoute("/journey")({
 });
 
 const stages: { title: Pair; icon: React.ElementType }[] = [
-  { title: p("الفرز الذكي التحاوري", "Conversational Smart Triage"), icon: MessageSquare },
-  { title: p("استخلاص التقرير الطبي", "Medical Document Extraction"), icon: FileText },
-  { title: p("تصنيف الأولوية بالذكاء الاصطناعي", "AI Priority Classification"), icon: Brain },
+  { title: p("اختيار نوع الطلب", "Request Type Selection"), icon: ClipboardList },
+  { title: p("المساعد الذكي والإسعافات الأولية", "Smart Assistant & First Aid"), icon: MessageSquare },
+  { title: p("تحديد موقع المريض", "Patient Location"), icon: MapPin },
+  { title: p("رفع التقرير الطبي", "Medical Report Upload"), icon: FileText },
+  { title: p("التحليل وتصنيف الأولوية", "Analysis & Priority Classification"), icon: Brain },
   { title: p("المطابقة الذكية للمستشفيات", "Smart Hospital Matching"), icon: HospitalIcon },
   { title: p("قبول المستشفى", "Hospital Acceptance"), icon: BadgeCheck },
   { title: p("توجيه وسيلة النقل", "Transport Dispatch"), icon: Ambulance },
@@ -58,36 +60,180 @@ const stages: { title: Pair; icon: React.ElementType }[] = [
   { title: p("استبيان الرضا", "Satisfaction Survey"), icon: Star },
 ];
 
-const triage: { q: Pair; options: Pair[] }[] = [
+const requestTypes: { id: string; name: Pair; note: Pair }[] = [
   {
-    q: p("من هو المريض وما عمره؟", "Who is the patient and what is their age?"),
-    options: [p("قريب من الدرجة الأولى — ٥٨ سنة", "First-degree relative — 58 years"), p("المريض نفسه", "The patient")],
+    id: "evac",
+    name: p("إخلاء طبي عاجل", "Urgent medical evacuation"),
+    note: p("نقل مريض حرج بين المرافق الصحية", "Transfer of a critical patient between health facilities"),
   },
   {
-    q: p("ما موقع المريض الحالي؟", "What is the patient's current location?"),
-    options: [p("مركز صحي العقيق — الباحة", "Al-Aqiq Health Center — Al-Baha"), p("المنزل", "At home")],
+    id: "transfer",
+    name: p("تحويل علاجي لتخصص غير متوفر", "Treatment referral for an unavailable specialty"),
+    note: p("حالة مستقرة تحتاج تخصصًا دقيقًا", "Stable case requiring a subspecialty"),
   },
   {
-    q: p("هل المريض منوّم حاليًا في مرفق صحي؟", "Is the patient currently admitted to a facility?"),
-    options: [p("نعم — الطوارئ", "Yes — Emergency department"), p("لا", "No")],
-  },
-  {
-    q: p("ما التشخيص المبدئي المذكور في التقرير؟", "What is the initial diagnosis in the report?"),
-    options: [p("نزيف دماغي حاد", "Acute intracranial hemorrhage"), p("غير محدد", "Not specified")],
-  },
-  {
-    q: p("هل حالة المريض مستقرة؟", "Is the patient's condition stable?"),
-    options: [p("غير مستقرة — تدهور في الوعي", "Unstable — declining consciousness"), p("مستقرة", "Stable")],
-  },
-  {
-    q: p("هل يحتاج سرير عناية مركزة؟", "Does the patient need an ICU bed?"),
-    options: [p("نعم — بتوصية الطبيب المعالج", "Yes — recommended by treating physician"), p("غير معروف", "Unknown")],
-  },
-  {
-    q: p("هل توافق على مشاركة التقرير الطبي مع المستشفى المستقبل؟", "Do you consent to sharing the report with the receiving hospital?"),
-    options: [p("أوافق", "I consent"), p("لاحقًا", "Later")],
+    id: "advice",
+    name: p("استشارة وإسعافات أولية", "Guidance and first aid"),
+    note: p("توجيه عام قبل وصول الفريق الطبي", "General guidance before the medical team arrives"),
   },
 ];
+
+const patientLocations: { id: string; name: Pair; note: Pair }[] = [
+  {
+    id: "aqiq",
+    name: p("مركز صحي العقيق — الباحة", "Al-Aqiq Health Center — Al-Baha"),
+    note: p("منوّم حاليًا في الطوارئ", "Currently admitted in the emergency department"),
+  },
+  { id: "home", name: p("المنزل", "At home"), note: p("حي الظفير — الباحة", "Al-Dhafir district — Al-Baha") },
+  {
+    id: "road",
+    name: p("الطريق الجبلي (عقبة الباحة)", "Mountain road (Al-Baha escarpment)"),
+    note: p("موقع يصعب وصول الإسعاف البري إليه", "Difficult access for ground ambulance"),
+  },
+];
+
+type CaseType = "bleeding" | "fainting" | "burns" | "breathing" | "chest";
+
+const caseTypes: { id: CaseType; label: Pair }[] = [
+  { id: "bleeding", label: p("نزيف", "Bleeding") },
+  { id: "fainting", label: p("إغماء", "Fainting") },
+  { id: "burns", label: p("حروق", "Burns") },
+  { id: "breathing", label: p("صعوبة في التنفس", "Breathing difficulty") },
+  { id: "chest", label: p("ألم في الصدر", "Chest pain") },
+];
+
+const firstAid: Record<CaseType, Pair[]> = {
+  bleeding: [
+    p("اضغط مباشرة على موضع النزيف بشاش أو قطعة قماش نظيفة.", "Apply direct pressure on the wound with sterile gauze or a clean cloth."),
+    p("ارفع الجزء المصاب فوق مستوى القلب إن أمكن.", "Raise the injured part above heart level if possible."),
+    p("لا تُزل الشاش المتشبع بالدم، بل أضف طبقة أخرى فوقه.", "Do not remove blood-soaked gauze; add another layer on top."),
+    p("حافظ على تدفئة المصاب وطمئنه ولا تتركه بمفرده.", "Keep the person warm and reassured; do not leave them alone."),
+    p("إذا لم يتوقف النزيف أو كان غزيرًا فاتصل بالهلال الأحمر ٩٩٧.", "If bleeding does not stop or is heavy, call the Red Crescent 997."),
+  ],
+  fainting: [
+    p("افسح مجالًا للهواء وأبعد الحشود عن المصاب.", "Allow fresh air and move bystanders away."),
+    p("اجعله مستلقيًا على ظهره وارفع قدميه نحو ٣٠ سم.", "Lay them flat on their back and raise the legs about 30 cm."),
+    p("فك الملابس الضيقة حول الرقبة والصدر.", "Loosen tight clothing around the neck and chest."),
+    p("لا تُعطِه شيئًا بالفم قبل استعادة وعيه بالكامل.", "Give nothing by mouth until they are fully conscious."),
+    p("إذا لم يستعد وعيه خلال دقيقة فاتصل بالهلال الأحمر ٩٩٧.", "If they do not regain consciousness within one minute, call 997."),
+  ],
+  burns: [
+    p("أبعد المصاب عن مصدر الحرارة بأمان.", "Safely move the person away from the heat source."),
+    p("برّد المنطقة بماء جارٍ فاتر لمدة ٢٠ دقيقة.", "Cool the area with cool running water for 20 minutes."),
+    p("لا تستخدم الثلج أو المعاجين أو الزيوت.", "Do not use ice, pastes, or oils."),
+    p("غطِّ الحرق بضماد نظيف غير لاصق ولا تفقأ الفقاعات.", "Cover with a clean non-adhesive dressing; do not burst blisters."),
+    p("الحروق الواسعة أو حروق الوجه واليدين تستوجب الاتصال بـ ٩٩٧.", "Extensive burns or burns to the face and hands require calling 997."),
+  ],
+  breathing: [
+    p("اجلس المصاب مستقيمًا مع ميل بسيط للأمام.", "Sit the person upright, leaning slightly forward."),
+    p("افتح النوافذ وأزل المهيجات مثل الدخان والعطور.", "Open windows and remove irritants such as smoke and perfume."),
+    p("ساعده على استخدام بخاخه الموصوف مسبقًا إن وُجد.", "Help them use their previously prescribed inhaler if available."),
+    p("راقب لون الشفاه والأصابع ومستوى وعيه.", "Watch the colour of lips and fingers and their level of consciousness."),
+    p("عند الازرقاق أو توقف التنفس اتصل بـ ٩٩٧ فورًا.", "If they turn blue or stop breathing, call 997 immediately."),
+  ],
+  chest: [
+    p("أوقف أي مجهود واجعله يجلس في وضع مريح.", "Stop all exertion and have them sit in a comfortable position."),
+    p("اتصل بالهلال الأحمر ٩٩٧ فورًا ولا تنتظر تحسن الألم.", "Call the Red Crescent 997 immediately; do not wait for the pain to ease."),
+    p("فك الملابس الضيقة وحافظ على تهوية المكان.", "Loosen tight clothing and keep the area ventilated."),
+    p("لا تدعه يقود السيارة بنفسه إلى المستشفى.", "Do not let them drive themselves to hospital."),
+    p("إذا فقد الوعي وتوقف التنفس فابدأ الإنعاش القلبي الرئوي.", "If they lose consciousness and stop breathing, begin CPR."),
+  ],
+};
+
+const dangerSigns = ["no-breathing", "severe-bleeding", "unconscious"] as const;
+
+const triage: { id: string; q: Pair; options: { key: string; label: Pair }[] }[] = [
+  {
+    id: "identity",
+    q: p("من هو المريض وما عمره؟", "Who is the patient and what is their age?"),
+    options: [
+      { key: "relative", label: p("قريب من الدرجة الأولى — ٥٨ سنة", "First-degree relative — 58 years") },
+      { key: "self", label: p("المريض نفسه", "The patient") },
+    ],
+  },
+  {
+    id: "case",
+    q: p("ما طبيعة الحالة الظاهرة الآن؟", "What is the apparent nature of the case right now?"),
+    options: caseTypes.map((c) => ({ key: c.id, label: c.label })),
+  },
+  {
+    id: "danger",
+    q: p("هل توجد أي من علامات الخطر التالية؟", "Are any of the following danger signs present?"),
+    options: [
+      { key: "no-breathing", label: p("توقف التنفس", "Absence of breathing") },
+      { key: "severe-bleeding", label: p("نزيف شديد", "Severe bleeding") },
+      { key: "unconscious", label: p("فقدان الوعي", "Loss of consciousness") },
+      { key: "none", label: p("لا توجد علامات خطر", "No danger signs") },
+    ],
+  },
+  {
+    id: "diagnosis",
+    q: p("ما التشخيص المبدئي المذكور في التقرير؟", "What is the initial diagnosis in the report?"),
+    options: [
+      { key: "ich", label: p("نزيف دماغي حاد", "Acute intracranial hemorrhage") },
+      { key: "unspecified", label: p("غير محدد", "Not specified") },
+    ],
+  },
+  {
+    id: "stability",
+    q: p("هل حالة المريض مستقرة؟", "Is the patient's condition stable?"),
+    options: [
+      { key: "unstable", label: p("غير مستقرة — تدهور في الوعي", "Unstable — declining consciousness") },
+      { key: "stable", label: p("مستقرة", "Stable") },
+    ],
+  },
+  {
+    id: "icu",
+    q: p("هل يحتاج سرير عناية مركزة؟", "Does the patient need an ICU bed?"),
+    options: [
+      { key: "yes", label: p("نعم — بتوصية الطبيب المعالج", "Yes — recommended by treating physician") },
+      { key: "unknown", label: p("غير معروف", "Unknown") },
+    ],
+  },
+  {
+    id: "consent",
+    q: p(
+      "هل توافق على مشاركة التقرير الطبي مع المستشفى المستقبل؟",
+      "Do you consent to sharing the report with the receiving hospital?",
+    ),
+    options: [
+      { key: "yes", label: p("أوافق", "I consent") },
+      { key: "later", label: p("لاحقًا", "Later") },
+    ],
+  },
+];
+
+function FirstAidPanel({ caseType, danger }: { caseType: CaseType; danger: boolean }) {
+  const { tx } = useLang();
+  const label = caseTypes.find((c) => c.id === caseType)!.label;
+  return (
+    <div className="space-y-3">
+      {danger && <EmergencyNotice />}
+      <div className="rounded-md border-2 border-destructive/50 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+        {tx(
+          p(
+            "هذه معلومات إسعاف أولي عامة فقط ولا تُغني عن الاتصال بالطوارئ ٩٩٧ في الحالات الخطيرة.",
+            "This is general first-aid information only and does not replace calling emergency services at 997 in serious cases.",
+          ),
+        )}
+      </div>
+      <div className="rounded-md border border-border bg-secondary/60 p-3">
+        <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
+          <HeartPulse className="h-4 w-4" />
+          {tx(p("نوع الحالة المُحدد", "Determined case type"))}: {tx(label)}
+        </p>
+        <ol className="space-y-1.5 text-xs">
+          {firstAid[caseType].map((s, i) => (
+            <li key={s.en} className="flex items-start gap-2 rounded bg-card p-2">
+              <span className="font-display font-bold text-primary">{i + 1}.</span>
+              <span>{tx(s)}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
 
 function StepRail({ step }: { step: number }) {
   const { tx } = useLang();
