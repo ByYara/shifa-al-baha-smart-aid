@@ -428,7 +428,7 @@ function JourneyPage() {
           )}
 
 
-          {step === 1 && (
+          {step === 3 && (
             <div className="space-y-3">
               <button
                 onClick={() => setUploaded(true)}
@@ -481,7 +481,7 @@ function JourneyPage() {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 4 && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3">
                 <Tag tone="urgent">{tx(p("عاجل", "Urgent"))}</Tag>
@@ -514,7 +514,7 @@ function JourneyPage() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 5 && (
             <div className="space-y-3">
               {hospitals.map((h) => (
                 <div
@@ -564,7 +564,7 @@ function JourneyPage() {
             </div>
           )}
 
-          {step === 4 && (
+          {step === 6 && (
             <div className="space-y-3">
               <div className="rounded-md border border-success/30 bg-success/10 p-4">
                 <p className="flex items-center gap-2 font-display text-base font-bold text-success">
@@ -591,7 +591,7 @@ function JourneyPage() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 7 && (
             <div className="space-y-3">
               {transports.map((t) => (
                 <div
@@ -634,7 +634,7 @@ function JourneyPage() {
             </div>
           )}
 
-          {step === 6 && (
+          {step === 8 && (
             <div className="space-y-4">
               <ol className="space-y-2">
                 {[
@@ -682,7 +682,7 @@ function JourneyPage() {
             </div>
           )}
 
-          {step === 7 && (
+          {step === 9 && (
             <div className="space-y-4">
               <div className="rounded-md border border-success/30 bg-success/10 p-4 text-sm text-success">
                 <CheckCircle2 className="mb-1 h-5 w-5" />
@@ -717,7 +717,7 @@ function JourneyPage() {
             </div>
           )}
 
-          {step === 8 && (
+          {step === 10 && (
             <div className="space-y-4">
               {[
                 p("سهولة تقديم الطلب", "Ease of submitting the request"),
