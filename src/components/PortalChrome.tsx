@@ -69,7 +69,7 @@ export function PortalHeader() {
               key={r.to}
               to={r.to}
               className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary"
-              activeProps={{ className: "bg-primary text-primary-foreground border-primary" }}
+              activeProps={{ className: "!bg-primary !text-primary-foreground !border-primary" }}
             >
               {tx(r.label)}
             </Link>
