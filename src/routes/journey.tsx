@@ -288,8 +288,32 @@ function JourneyPage() {
   const [answers, setAnswers] = React.useState<string[]>([]);
   // Stage 3 — patient location
   const [location, setLocation] = React.useState<string | null>(null);
-  // Stage 4
-  const [uploaded, setUploaded] = React.useState(false);
+  // Stage 4 — documents upload
+  const [files, setFiles] = React.useState<UploadedFile[]>([]);
+  const [activeDocType, setActiveDocType] = React.useState("report");
+  const [processing, setProcessing] = React.useState(false);
+  const [processed, setProcessed] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const distinctDocTypes = new Set(files.map((f) => f.typeId)).size;
+  const completeness = Math.min(100, 30 + distinctDocTypes * 14);
+
+  const addFiles = (list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    const added: UploadedFile[] = Array.from(list).map((f, i) => ({
+      id: `${Date.now()}-${i}`,
+      name: f.name,
+      sizeKb: Math.max(1, Math.round(f.size / 1024)),
+      typeId: activeDocType,
+    }));
+    setFiles((prev) => [...prev, ...added]);
+    setProcessed(false);
+    setProcessing(true);
+    window.setTimeout(() => {
+      setProcessing(false);
+      setProcessed(true);
+    }, 1800);
+  };
   // Stage 6
   const [sentTo, setSentTo] = React.useState<string | null>(null);
   // Stage 8
