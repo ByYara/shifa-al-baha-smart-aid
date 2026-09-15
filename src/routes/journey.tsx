@@ -11,11 +11,14 @@ import {
   FileText,
   HeartPulse,
   Hospital as HospitalIcon,
+  Loader2,
   MapPin,
   MessageSquare,
+  Paperclip,
   Star,
   Timer,
   Upload,
+  X,
 } from "lucide-react";
 import {
   Button,
@@ -144,6 +147,22 @@ const firstAid: Record<CaseType, Pair[]> = {
 
 const dangerSigns = ["no-breathing", "severe-bleeding", "unconscious"] as const;
 
+// Stage 4 — document types (identity is verified via Nafath, so no National ID field)
+const docTypes: { id: string; label: Pair }[] = [
+  { id: "report", label: p("التقرير الطبي", "Medical report") },
+  { id: "referral", label: p("خطاب الإحالة", "Referral letter") },
+  { id: "radiology", label: p("نتائج الأشعة أو المختبر", "Radiology or lab results") },
+  { id: "physician", label: p("تقرير الطبيب المعالج", "Treating physician's report") },
+  { id: "companion", label: p("بيانات المرافق", "Companion's information") },
+  { id: "consent", label: p("إقرار وموافقة المريض أو ولي الأمر", "Patient or guardian consent") },
+];
+
+type UploadedFile = { id: string; name: string; sizeKb: number; typeId: string };
+
+function formatSize(kb: number): string {
+  return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
+}
+
 const triage: { id: string; q: Pair; options: { key: string; label: Pair }[] }[] = [
   {
     id: "identity",
@@ -269,8 +288,32 @@ function JourneyPage() {
   const [answers, setAnswers] = React.useState<string[]>([]);
   // Stage 3 — patient location
   const [location, setLocation] = React.useState<string | null>(null);
-  // Stage 4
-  const [uploaded, setUploaded] = React.useState(false);
+  // Stage 4 — documents upload
+  const [files, setFiles] = React.useState<UploadedFile[]>([]);
+  const [activeDocType, setActiveDocType] = React.useState("report");
+  const [processing, setProcessing] = React.useState(false);
+  const [processed, setProcessed] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const distinctDocTypes = new Set(files.map((f) => f.typeId)).size;
+  const completeness = Math.min(100, 30 + distinctDocTypes * 14);
+
+  const addFiles = (list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    const added: UploadedFile[] = Array.from(list).map((f, i) => ({
+      id: `${Date.now()}-${i}`,
+      name: f.name,
+      sizeKb: Math.max(1, Math.round(f.size / 1024)),
+      typeId: activeDocType,
+    }));
+    setFiles((prev) => [...prev, ...added]);
+    setProcessed(false);
+    setProcessing(true);
+    window.setTimeout(() => {
+      setProcessing(false);
+      setProcessed(true);
+    }, 1800);
+  };
   // Stage 6
   const [sentTo, setSentTo] = React.useState<string | null>(null);
   // Stage 8
@@ -289,7 +332,7 @@ function JourneyPage() {
     if (step === 0) return !!requestType;
     if (step === 1) return answers.filter(Boolean).length >= triage.length;
     if (step === 2) return !!location;
-    if (step === 3) return uploaded;
+    if (step === 3) return files.length > 0 && processed && !processing;
     if (step === 5) return !!sentTo;
     if (step === 7) return !!transport && opsApproved;
     if (step === 10) return submitted;
@@ -430,26 +473,108 @@ function JourneyPage() {
 
           {step === 3 && (
             <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {tx(
+                  p(
+                    "اختر نوع المستند ثم ارفع الملفات (PDF أو PNG أو JPG). التحقق من الهوية يتم عبر نفاذ، لذا لا حاجة لرفع الهوية الوطنية.",
+                    "Choose a document type, then upload files (PDF, PNG or JPG). Identity is verified through Nafath, so no National ID is required.",
+                  ),
+                )}
+              </p>
+
+              <div>
+                <p className="mb-2 text-xs font-semibold">{tx(p("نوع المستند", "Document type"))}</p>
+                <div className="flex flex-wrap gap-2">
+                  {docTypes.map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => setActiveDocType(d.id)}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                        activeDocType === d.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border hover:bg-secondary"
+                      }`}
+                    >
+                      {tx(d.label)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={(e) => {
+                  addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
               <button
-                onClick={() => setUploaded(true)}
+                onClick={() => fileInputRef.current?.click()}
                 className="flex w-full flex-col items-center gap-2 rounded-md border-2 border-dashed border-border p-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-secondary"
               >
                 <Upload className="h-6 w-6 text-primary" />
-                {tx(p("ارفع التقرير الطبي (PDF أو صورة)", "Upload the medical report (PDF or image)"))}
+                {tx(p("اختر الملفات للرفع", "Choose files to upload"))} —{" "}
+                {tx(docTypes.find((d) => d.id === activeDocType)!.label)}
               </button>
 
-              {uploaded && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-md border border-border p-3">
-                    <p className="mb-2 text-xs font-semibold">
-                      {tx(p("معاينة الملف", "File preview"))} — medical-report-SB2455.pdf
-                    </p>
-                    <div className="space-y-1.5 rounded bg-secondary p-3">
-                      {[90, 75, 60, 85, 45, 70].map((w, i) => (
-                        <div key={i} className="h-2 rounded bg-muted-foreground/25" style={{ width: `${w}%` }} />
-                      ))}
-                    </div>
-                  </div>
+              {files.length > 0 && (
+                <div className="rounded-md border border-border p-3">
+                  <p className="mb-2 flex items-center gap-2 text-xs font-semibold">
+                    <Paperclip className="h-4 w-4 text-primary" />
+                    {tx(p("المستندات المرفوعة", "Uploaded documents"))} ({files.length})
+                  </p>
+                  <ul className="space-y-1.5">
+                    {files.map((f) => {
+                      const ext = f.name.split(".").pop()?.toUpperCase() ?? "PDF";
+                      const dt = docTypes.find((d) => d.id === f.typeId);
+                      return (
+                        <li key={f.id} className="flex items-center gap-2 rounded bg-secondary p-2 text-xs">
+                          <FileText className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="min-w-0 flex-1 truncate font-medium">{f.name}</span>
+                          <span className="text-muted-foreground">{formatSize(f.sizeKb)}</span>
+                          <Tag>{ext}</Tag>
+                          <Tag tone="success">{dt ? tx(dt.label) : f.typeId}</Tag>
+                          <button
+                            aria-label={tx(p("إزالة الملف", "Remove file"))}
+                            onClick={() => {
+                              setFiles((prev) => {
+                                const next = prev.filter((x) => x.id !== f.id);
+                                if (next.length === 0) {
+                                  setProcessed(false);
+                                  setProcessing(false);
+                                }
+                                return next;
+                              });
+                            }}
+                            className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {processing && (
+                <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-secondary p-3 text-sm font-medium text-primary">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {tx(
+                    p(
+                      "جاري معالجة واستخلاص البيانات الطبية...",
+                      "Analyzing documents and extracting medical data...",
+                    ),
+                  )}
+                </div>
+              )}
+
+              {processed && files.length > 0 && !processing && (
+                <div className="space-y-2">
                   <div className="rounded-md border border-gold/50 bg-gold/10 p-3">
                     <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-gold-foreground">
                       <Brain className="h-4 w-4" />
@@ -457,11 +582,14 @@ function JourneyPage() {
                     </p>
                     <dl className="space-y-1.5 text-xs">
                       {[
-                        { k: p("التشخيص", "Diagnosis"), v: p("نزيف دماغي حاد", "Acute intracranial hemorrhage") },
-                        { k: p("درجة الخطورة", "Severity"), v: p("عالية", "High") },
-                        { k: p("التخصص المطلوب", "Specialty"), v: p("جراحة أعصاب", "Neurosurgery") },
+                        { k: p("التشخيص المستخلص", "Extracted diagnosis"), v: p("نزيف دماغي حاد", "Acute intracranial hemorrhage") },
+                        { k: p("درجة الخطورة", "Severity level"), v: p("عالية", "High") },
+                        { k: p("التخصص المطلوب", "Required specialty"), v: p("جراحة أعصاب", "Neurosurgery") },
                         { k: p("نوع السرير", "Bed type"), v: p("عناية مركزة", "Intensive care") },
-                        { k: p("نسبة اكتمال البيانات", "Completeness score"), v: p("٩٢٪", "92%") },
+                        {
+                          k: p("نسبة اكتمال الطلب", "Request completeness"),
+                          v: p(`${completeness}٪`, `${completeness}%`),
+                        },
                       ].map(({ k, v }) => (
                         <div key={k.en} className="flex justify-between gap-3">
                           <dt className="text-muted-foreground">{tx(k)}</dt>
@@ -469,13 +597,25 @@ function JourneyPage() {
                         </div>
                       ))}
                     </dl>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full bg-gold transition-all" style={{ width: `${completeness}%` }} />
+                    </div>
+                  </div>
+                  <div className="rounded-md border-2 border-warning/60 bg-warning/10 px-3 py-2 text-xs font-semibold text-warning-foreground">
+                    {tx(
+                      p(
+                        "هذا استخلاص آلي تجريبي يخضع لمراجعة واعتماد الكادر الطبي المختص.",
+                        "This is a trial automated extraction subject to human review.",
+                      ),
+                    )}
                   </div>
                 </div>
               )}
+
               <Disclaimer
                 text={p(
-                  "الاستخلاص الآلي ميزة تجريبية بالذكاء الاصطناعي، ويجب التحقق من البيانات بواسطة الطبيب المختص.",
-                  "Automated extraction is a trial AI feature; data must be verified by the attending physician.",
+                  "الرفع والاستخلاص في هذا النموذج محاكاة توضيحية؛ لا تُرسل ملفات فعلية إلى أي خادم.",
+                  "Upload and extraction in this prototype are illustrative simulations; no actual files are sent to any server.",
                 )}
               />
             </div>
