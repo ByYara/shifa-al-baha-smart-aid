@@ -332,7 +332,7 @@ function JourneyPage() {
     if (step === 0) return !!requestType;
     if (step === 1) return answers.filter(Boolean).length >= triage.length;
     if (step === 2) return !!location;
-    if (step === 3) return uploaded;
+    if (step === 3) return files.length > 0 && processed && !processing;
     if (step === 5) return !!sentTo;
     if (step === 7) return !!transport && opsApproved;
     if (step === 10) return submitted;
