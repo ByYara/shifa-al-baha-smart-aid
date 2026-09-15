@@ -11,11 +11,14 @@ import {
   FileText,
   HeartPulse,
   Hospital as HospitalIcon,
+  Loader2,
   MapPin,
   MessageSquare,
+  Paperclip,
   Star,
   Timer,
   Upload,
+  X,
 } from "lucide-react";
 import {
   Button,
@@ -143,6 +146,22 @@ const firstAid: Record<CaseType, Pair[]> = {
 };
 
 const dangerSigns = ["no-breathing", "severe-bleeding", "unconscious"] as const;
+
+// Stage 4 — document types (identity is verified via Nafath, so no National ID field)
+const docTypes: { id: string; label: Pair }[] = [
+  { id: "report", label: p("التقرير الطبي", "Medical report") },
+  { id: "referral", label: p("خطاب الإحالة", "Referral letter") },
+  { id: "radiology", label: p("نتائج الأشعة أو المختبر", "Radiology or lab results") },
+  { id: "physician", label: p("تقرير الطبيب المعالج", "Treating physician's report") },
+  { id: "companion", label: p("بيانات المرافق", "Companion's information") },
+  { id: "consent", label: p("إقرار وموافقة المريض أو ولي الأمر", "Patient or guardian consent") },
+];
+
+type UploadedFile = { id: string; name: string; sizeKb: number; typeId: string };
+
+function formatSize(kb: number): string {
+  return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
+}
 
 const triage: { id: string; q: Pair; options: { key: string; label: Pair }[] }[] = [
   {
